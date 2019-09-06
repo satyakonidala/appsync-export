@@ -1,0 +1,17 @@
+{
+  "name": "appsync-resolver-exporter",
+  "version": "0.0.1",
+  "description": "backups appsync resolvers",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "bkp": "node index.js -a hieo6nrzh5dw7g4zjwp7ivezcy -p saml -o ./bkps"
+  },
+  "author": "satya",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.524.0",
+    "async": "^2.6.1",
+    "commander": "^2.19.0"
+  }
+}
