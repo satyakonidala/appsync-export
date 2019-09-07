@@ -126,6 +126,9 @@ program
 
     const writeResolversToFile = resolver => {
       const filePathPartial = `${OUTPUT_DIR}/${resolver.typeName}/${resolver.fieldName}`;
+      console.log(
+        `writing resolvers for ${resolver.typeName}/${resolver.fieldName}`
+      );
       return [
         fsWritePromise(
           `${filePathPartial}-requestMappingTemplate.vtl`,
