@@ -6,7 +6,6 @@ Description: Export appsync resolvers from AWS account as VTL files
 
 const program = require("commander");
 const AWS = require("aws-sdk");
-const async = require("async");
 const fs = require("fs");
 const { promisify } = require("util");
 const path = require("path");
@@ -15,7 +14,7 @@ const mkdirPromise = promisify(fs.mkdir);
 const fsWritePromise = promisify(fs.writeFile);
 
 program
-  .version("0.0.1")
+  .version("0.1.0")
   .option("-a --api-id <required>", "API ID of the appsync API")
   .option("-p --profile <required>", "Required AWS Profile")
   .option("-r --aws-region <required>", "Required AWS Region")
@@ -25,7 +24,7 @@ program
   )
   .action(async function(req, optional) {
     if (!req.hasOwnProperty("apiId")) {
-      console.log("ERROR! Missing required option api-ID, run -h for help");
+      console.error("ERROR: Missing appsync appid");
       process.exit(1);
     }
 
@@ -56,7 +55,7 @@ program
     };
 
     const makeDirs = () => {
-      const dirNames = ["queries", "mutations"];
+      const dirNames = ["Query", "Mutation"];
       return Promise.all(
         dirNames.map(dir =>
           mkdirPromise(path.resolve(`${OUTPUT_DIR}/${dir}`), {
@@ -77,39 +76,92 @@ program
       );
     };
 
-    const writeResolvers = async params => {
-      // list all types available
+    const getApiTypes = async params => {
       const schemaTypes = [];
-      const getTypes = async typeParams => {
+      const getTypesRecursive = async typeParams => {
         const partialTypesList = await appsync.listTypes(typeParams).promise();
         partialTypesList.types.map(type => schemaTypes.push(type.name));
         if (partialTypesList.nextToken !== null) {
-          getTypes(
+          getTypesRecursive(
             Object.assign({}, typeParams, {
               nextToken: partialTypesList.nextToken
             })
           );
-        } else {
+        }
+      };
+      await getTypesRecursive(params);
+
+      return schemaTypes;
+    };
+
+    const getAllResolversForType = async typeName => {
+      const resolversForType = [];
+
+      const getResolversRecursive = async (typeName, nextToken) => {
+        const partialResolverList = await appsync
+          .listResolvers({
+            apiId: API_ID,
+            typeName: typeName,
+            nextToken: nextToken
+          })
+          .promise();
+
+        if (!partialResolverList.resolvers.length) {
+          console.log(`no resolver for type:${typeName}`);
           return;
+        }
+
+        partialResolverList.resolvers.map(resolver =>
+          resolversForType.push(resolver)
+        );
+        if (partialResolverList.nextToken !== null) {
+          getResolversRecursive(typeName, partialResolverList.nextToken);
         }
       };
 
-      await getTypes(params);
+      await getResolversRecursive(typeName, null);
 
-      // if (getTypes.nextToken !== null) {
-      //   getTypes.types.map(type => schemaTypes.push(type.name));
-      //   getTypes(Object.assign({}, params, { nextToken: getTypes.nextToken }));
-      // }
-      console.log(schemaTypes);
+      return resolversForType;
+    };
+
+    const writeResolversToFile = resolver => {
+      const filePathPartial = `${OUTPUT_DIR}/${resolver.typeName}/${resolver.fieldName}`;
+      return [
+        fsWritePromise(
+          `${filePathPartial}-requestMappingTemplate.vtl`,
+          resolver.requestMappingTemplate
+        ),
+        fsWritePromise(
+          `${filePathPartial}-responseMappingTemplate.vtl`,
+          resolver.responseMappingTemplate
+        )
+      ];
+    };
+
+    // flatmap not supported in node10
+    const flatMap = (xs, f) => xs.reduce((acc, x) => acc.concat(f(x)), []);
+
+    const getResolvers = async () => {
+      await Promise.all(
+        flatMap(await getApiTypes(typeListParams), async typeName => {
+          const resolversByType = await getAllResolversForType(typeName);
+
+          if (!resolversByType.length) return;
+
+          resolversByType.map(resolver => {
+            writeResolversToFile(resolver);
+          });
+        })
+      );
     };
 
     const startExport = async () => {
-      // await makeDirs();
-      // console.log("making dirs successful");
-      // await writeSchema(schemaDownloadParams);
-      // console.log("schema written to dir");
+      await makeDirs();
+      console.log("making dirs successful");
+      await writeSchema(schemaDownloadParams);
+      console.log("schema written to dir");
 
-      await writeResolvers(typeListParams);
+      await getResolvers();
     };
 
     try {
