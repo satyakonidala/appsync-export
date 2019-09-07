@@ -1,4 +1,4 @@
-useful for backuping up appsync schema and resolver files.
+useful for backing up AWS appsync schema and resolver files.
 
 usage:
 
