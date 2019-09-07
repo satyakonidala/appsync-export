@@ -11,7 +11,8 @@ const { promisify } = require("util");
 const path = require("path");
 
 const mkdirPromise = promisify(fs.mkdir);
-const fsWritePromise = promisify(fs.writeFile);
+const fsWriteFilePromise = promisify(fs.writeFile);
+const fsUnlinkPromise = promisify(fs.unlink);
 
 program
   .version("0.1.0")
@@ -29,6 +30,7 @@ program
     }
 
     const OUTPUT_DIR = req.outputDir || "./mappingTemplates";
+    const METADATA_FILE_PATH = `${OUTPUT_DIR}/api-metadata.txt`;
     const API_ID = req.apiId;
 
     AWS.config.update({
@@ -70,7 +72,7 @@ program
       const schemaBlob = await appsync
         .getIntrospectionSchema(schemaParams)
         .promise();
-      return fsWritePromise(
+      return fsWriteFilePromise(
         `${OUTPUT_DIR}/${schemaFileName}`,
         schemaBlob.schema
       );
@@ -124,17 +126,36 @@ program
       return resolversForType;
     };
 
+    let metaDataWritestream;
+    //delete metadata file if present
+    try {
+      await fsUnlinkPromise(METADATA_FILE_PATH);
+      console.log("previous metadata flushed");
+    } catch (e) {
+    } finally {
+      metaDataWritestream = fs.createWriteStream(METADATA_FILE_PATH, {
+        flags: "a"
+      });
+    }
+
+    const writeMetaData = resolver => {
+      metaDataWritestream.write(JSON.stringify(resolver) + "\n");
+    };
+
     const writeResolversToFile = resolver => {
+      // write metadata for each resolver
+      writeMetaData(resolver);
+
       const filePathPartial = `${OUTPUT_DIR}/${resolver.typeName}/${resolver.fieldName}`;
       console.log(
         `writing resolvers for ${resolver.typeName}/${resolver.fieldName}`
       );
       return [
-        fsWritePromise(
+        fsWriteFilePromise(
           `${filePathPartial}-requestMappingTemplate.vtl`,
           resolver.requestMappingTemplate
         ),
-        fsWritePromise(
+        fsWriteFilePromise(
           `${filePathPartial}-responseMappingTemplate.vtl`,
           resolver.responseMappingTemplate
         )
@@ -163,7 +184,6 @@ program
       console.log("making dirs successful");
       await writeSchema(schemaDownloadParams);
       console.log("schema written to dir");
-
       await getResolvers();
     };
 
