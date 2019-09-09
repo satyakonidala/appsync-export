@@ -30,7 +30,8 @@ program
     }
 
     const OUTPUT_DIR = req.outputDir || "./mappingTemplates";
-    const METADATA_FILE_PATH = `${OUTPUT_DIR}/api-metadata.txt`;
+    const RESOLVER_DIR = `${OUTPUT_DIR}/resolvers`;
+
     const API_ID = req.apiId;
 
     AWS.config.update({
@@ -60,7 +61,7 @@ program
       const dirNames = ["Query", "Mutation"];
       return Promise.all(
         dirNames.map(dir =>
-          mkdirPromise(path.resolve(`${OUTPUT_DIR}/${dir}`), {
+          mkdirPromise(path.resolve(`${RESOLVER_DIR}/${dir}`), {
             recursive: true
           })
         )
@@ -128,15 +129,21 @@ program
 
     let metaDataWritestream;
     //delete metadata file if present
-    try {
-      await fsUnlinkPromise(METADATA_FILE_PATH);
-      console.log("previous metadata flushed");
-    } catch (e) {
-    } finally {
-      metaDataWritestream = fs.createWriteStream(METADATA_FILE_PATH, {
-        flags: "a"
-      });
-    }
+
+    const startMetaDataStream = async () => {
+      try {
+        await fsUnlinkPromise(`${RESOLVER_DIR}/api-metadata.txt`);
+        console.log("previous metadata flushed");
+      } catch (e) {
+      } finally {
+        metaDataWritestream = fs.createWriteStream(
+          `${RESOLVER_DIR}/api-metadata.txt`,
+          {
+            flags: "a"
+          }
+        );
+      }
+    };
 
     const writeMetaData = resolver => {
       metaDataWritestream.write(JSON.stringify(resolver) + "\n");
@@ -146,7 +153,7 @@ program
       // write metadata for each resolver
       writeMetaData(resolver);
 
-      const filePathPartial = `${OUTPUT_DIR}/${resolver.typeName}/${resolver.fieldName}`;
+      const filePathPartial = `${RESOLVER_DIR}/${resolver.typeName}/${resolver.fieldName}`;
       console.log(
         `writing resolvers for ${resolver.typeName}/${resolver.fieldName}`
       );
@@ -182,6 +189,7 @@ program
     const startExport = async () => {
       await makeDirs();
       console.log("making dirs successful");
+      await startMetaDataStream();
       await writeSchema(schemaDownloadParams);
       console.log("schema written to dir");
       await getResolvers();
