@@ -149,15 +149,21 @@ program
       metaDataWritestream.write(JSON.stringify(resolver) + "\n");
     };
 
-    const writeResolversToFile = resolver => {
-      // write metadata for each resolver
-      writeMetaData(resolver);
+    const getPipelineFunctions = async pipelineFunParms => {
+      return appsync.getFunction(pipelineFunParms).promise();
+    };
+
+    const writeResolversToFile = async resolver => {
+      const writeResolversToFilePromise = [];
 
       const filePathPartial = `${RESOLVER_DIR}/${resolver.typeName}/${resolver.fieldName}`;
       console.log(
         `writing resolvers for ${resolver.typeName}/${resolver.fieldName}`
       );
-      return [
+
+      // write metadata for each resolver
+      writeMetaData(resolver);
+      writeResolversToFilePromise.push(
         fsWriteFilePromise(
           `${filePathPartial}-requestMappingTemplate.vtl`,
           resolver.requestMappingTemplate
@@ -166,7 +172,32 @@ program
           `${filePathPartial}-responseMappingTemplate.vtl`,
           resolver.responseMappingTemplate
         )
-      ];
+      );
+
+      if (resolver.kind === "PIPELINE") {
+        const pipelineFunction = await Promise.all(
+          resolver.pipelineConfig.functions.map(functionID =>
+            getPipelineFunctions({ apiId: API_ID, functionId: functionID })
+          )
+        );
+
+        pipelineFunction.map(pipelineFunction => {
+          // write metadata for each resolver
+          writeMetaData(pipelineFunction.functionConfiguration);
+          writeResolversToFilePromise.push(
+            fsWriteFilePromise(
+              `${filePathPartial}-fun-${pipelineFunction.functionConfiguration.name}-requestMappingTemplate.vtl`,
+              pipelineFunction.functionConfiguration.requestMappingTemplate
+            ),
+            fsWriteFilePromise(
+              `${filePathPartial}-fun-${pipelineFunction.functionConfiguration.name}-responseMappingTemplate.vtl`,
+              pipelineFunction.functionConfiguration.responseMappingTemplate
+            )
+          );
+        });
+      }
+
+      return writeResolversToFilePromise;
     };
 
     // flatmap not supported in node10
