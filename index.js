@@ -175,13 +175,17 @@ program
       );
 
       if (resolver.kind === "PIPELINE") {
-        const pipelineFunction = await Promise.all(
+        const pipelineFunctions = await Promise.all(
           resolver.pipelineConfig.functions.map(functionID =>
             getPipelineFunctions({ apiId: API_ID, functionId: functionID })
           )
         );
 
-        pipelineFunction.map(pipelineFunction => {
+        pipelineFunctions.map(pipelineFunction => {
+          console.log(
+            `writing resolvers for Pipeline-function/${pipelineFunction.functionConfiguration.name}`
+          );
+
           // write metadata for each resolver
           writeMetaData(pipelineFunction.functionConfiguration);
           writeResolversToFilePromise.push(
