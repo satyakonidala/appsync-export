@@ -1,6 +1,6 @@
 {
   "name": "appsync-resolver-exporter",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "backups appsync resolvers",
   "main": "index.js",
   "scripts": {
@@ -11,6 +11,10 @@
   "dependencies": {
     "aws-sdk": "^2.524.0",
     "commander": "^2.19.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/satya23k/appsync-export"
   },
   "keywords": [
     "appsync",
