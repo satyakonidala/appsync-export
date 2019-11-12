@@ -1,5 +1,5 @@
 {
-  "name": "@nullstring23k/appsync-resolver-exporter",
+  "name": "appsync-resolver-exporter",
   "version": "0.0.1",
   "description": "backups appsync resolvers",
   "main": "index.js",
