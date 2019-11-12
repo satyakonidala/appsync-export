@@ -1,5 +1,5 @@
 {
-  "name": "appsync-resolver-exporter",
+  "name": "@nullstring23k/appsync-resolver-exporter",
   "version": "0.0.1",
   "description": "backups appsync resolvers",
   "main": "index.js",
@@ -7,9 +7,16 @@
     "test": "sh test.sh"
   },
   "author": "satya",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "aws-sdk": "^2.524.0",
     "commander": "^2.19.0"
-  }
+  },
+  "keywords": [
+    "appsync",
+    "exporter",
+    "backups",
+    "resolvers",
+    "graphql"
+  ]
 }
